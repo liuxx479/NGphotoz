@@ -65,12 +65,13 @@ def map_stats (cosmo_tomo_cone):
     ps_noiseless=ConvergenceMap(data=imap, angle=map_side_deg).powerSpectrum(l_edges)
     ps_unsmoothed=kappa_map.powerSpectrum(l_edges) ## power spectrum should be computed on unsmoothed maps
 
+    s=0
     for theta_g in theta_g_arr:        
-        out_fn = dir_cosmos+cosmo+'_tomo%i_cone%i_s%i.npy'%(tomo, cone, theta_g_arr[s])
+        out_fn = dir_cosmos+cosmo+'_tomo%i_cone%i_s%i.npy'%(tomo, cone, theta_g)
         if os.path.isfile(out_fn): ## skip the calculatoin if the file is already there
-            print (out_fn,'exist; skip computation.')
+            print (out_fn,'exist; skip computation.\n')
             continue
-        print (out_fn,'does NOT exist; compute NG stats..')
+        print (out_fn,'does NOT exist; compute NG stats..\n')
         imap = kappa_map.smooth(theta_g*u.arcmin)
         out=zeros(shape=(11, Nbin)) 
         kappa_bins = kappa_bin_edges[s][tomo-1] 
@@ -90,7 +91,8 @@ def map_stats (cosmo_tomo_cone):
         out[8] = mfs[1]
         out[9] = mfs[2]
         out[10] = mfs[3]        
-        save(out_fn, out)    
+        save(out_fn, out)   
+        s+=1
     #return out
 
 cosmo_tomo_cone_arr = [[cosmo, tomo, cone] 
