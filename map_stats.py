@@ -70,16 +70,18 @@ def map_stats (cosmo_tomo_cone):
     else: ## all cosmologies
         if cosmo[-1]=='a':
             iseed=int(cone*10+tomo) ## cone goes from 1 to 25, so 10 to 250
-        else cosmo[-1]=='f': ##'f' starts with a different seed from the a cosmology
+        else:# cosmo[-1]=='f': ##'f' starts with a different seed from the a cosmology
             iseed=int(1000+cone*10+tomo)
         out_dir = dir_cosmos
         fn = cosmo_fn_gen(cosmo, tomo, cone)
-        print (fn)
+
+    print (fn)
     
     out_fn_arr = [out_dir+cosmo+'_tomo%i_cone%i_s%i.npy'%(tomo, cone, theta_g) 
                   for theta_g in theta_g_arr]
+    
     if np.prod(array([os.path.isfile(out_fn) for out_fn in out_fn_arr])):
-        print (out_fn,'exist; skip computation.\n')
+        print (fn, 'files exist; skip computation.\n')
         return 0 ### all files already exist, no need to process
     
     ########## map operations
