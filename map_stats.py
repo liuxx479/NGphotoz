@@ -47,6 +47,7 @@ cosmo_fn_gen = lambda cosmo, tomo, cone: cosmo_dir+cosmo+'/kappa_LSST-SRD_tomo%i
 
 ### cov runs from 74 to 199
 cov_fn_gen = lambda tomo, cone: '/global/cscratch1/sd/jialiu/desc-sprint-raytracing/Cov_maps/kappa_LSST-SRD_tomo%i_LOS%i.fits'%(tomo, cone)
+#/global/cscratch1/sd/jialiu/desc-sprint-raytracing/Cov_maps/kappa_LSST-SRD_tomo4_LOS74.fits
 
 def map_stats (cosmo_tomo_cone):
     '''for fits file fn, generate ps, peaks, minima, pdf, MFs
@@ -54,21 +55,37 @@ def map_stats (cosmo_tomo_cone):
     tomo=1, 2,..5: int, for tomographic bins
     cone=1, 2,..5: int, for light cones'''
     cosmo, tomo, cone = cosmo_tomo_cone
-    fn = cosmo_fn_gen(cosmo, tomo, cone)
-    print (fn)
-    imap = fits.open(fn)[0].data ## open the file
-    ### add noise
+    
     ### generate random see, such that it is the same for all cosmology
     ### but different for tomo and cone
-    if cone=='cov':
-        iseed=int(100000+cone*100+tomo)
+    if cosmo=='cov':
+        iseed=int(10000+cone*10+tomo)
         out_dir = dir_cov
-    else:
+        fn = cov_fn_gen(tomo, cone)
+        
+#     elif cosmo=='biased':
+#         iseed=20000        
+        #/global/cscratch1/sd/jialiu/desc-sprint-raytracing/biased_maps/kappa_LSST-SRD_tomo5_pz_zbias0.0015_simgaz0.04_outlier0.15.txt_LOS_cone1.fits
+        
+    else: ## all cosmologies
         if cosmo[-1]=='a':
-            iseed=int(cone*100+tomo)
+            iseed=int(cone*10+tomo) ## cone goes from 1 to 25, so 10 to 250
         else cosmo[-1]=='f': ##'f' starts with a different seed from the a cosmology
-            iseed=int(1000+cone*100+tomo)
+            iseed=int(1000+cone*10+tomo)
         out_dir = dir_cosmos
+        fn = cosmo_fn_gen(cosmo, tomo, cone)
+        print (fn)
+    
+    out_fn_arr = [out_dir+cosmo+'_tomo%i_cone%i_s%i.npy'%(tomo, cone, theta_g) 
+                  for theta_g in theta_g_arr]
+    if np.prod(array([os.path.isfile(out_fn) for out_fn in out_fn_arr])):
+        print (out_fn,'exist; skip computation.\n')
+        return 0 ### all files already exist, no need to process
+    
+    ########## map operations
+    imap = fits.open(fn)[0].data ## open the file
+    
+    ### add noise
     seed(iseed)
     noise_map = np.random.normal(loc=0.0, scale=sigma_pix_arr[tomo-1], size=(map_pix, map_pix))
     kappa_map = ConvergenceMap(data=imap+noise_map, angle=map_side_deg)
@@ -82,10 +99,6 @@ def map_stats (cosmo_tomo_cone):
     s=0
     for theta_g in theta_g_arr:        
         out_fn = out_dir+cosmo+'_tomo%i_cone%i_s%i.npy'%(tomo, cone, theta_g)
-        if os.path.isfile(out_fn): ## skip the calculatoin if the file is already there
-            print (out_fn,'exist; skip computation.\n')
-            continue
-        print (out_fn,'does NOT exist; compute NG stats..\n')
         imap = kappa_map.smooth(theta_g*u.arcmin)
         out=zeros(shape=(11, Nbin)) 
         kappa_bins = kappa_bin_edges[s][tomo-1] 
@@ -119,9 +132,6 @@ cov_tomo_con_arr = [['cov', tomo, cone]
                        for cone in range(74,200)]
 ## test on one map
 # map_stats (cosmo_tomo_cone_arr[1])
-
-#/global/cscratch1/sd/jialiu/desc-sprint-raytracing/Cov_maps/kappa_LSST-SRD_tomo4_LOS74.fits
-
 
 pool=MPIPool()
 if not pool.is_master():

@@ -3,11 +3,11 @@
 #SBATCH --tasks-per-node=32
 #SBATCH --cpus-per-task=1
 #SBATCH -C haswell
-#SBATCH -t 4:00:00
+#SBATCH -t 0:30:00
 #SBATCH -J pzNG
 #SBATCH -o pzNG.o%j
 #SBATCH -e pzNG.e%j
-#SBATCH --qos=regular
+#SBATCH --qos=debug ##regular
 #SBATCH -A m1727
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jialiu@berkeley.edu
