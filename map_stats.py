@@ -13,6 +13,7 @@ root = '/global/u1/j/jialiu/NGphotoz/'
 dir_storage = root+'NGphotoz_scratch/'
 dir_cosmos = dir_storage+'Cosmo_maps/'
 dir_cov = dir_storage+'Cov_maps/'
+dir_bias = dir_storage+'Bias_maps/'
 
 ## constants
 map_side_deg = 10*u.degree
@@ -38,7 +39,6 @@ kappa_bin_edges = kron(sigma_kappa_arr,sigma_bin_edges).reshape(3,5,-1)
 sigma_pix_arr =[ (sigma_kappa / (pixel_angular_side * sqrt(ingal / u.arcmin**2))).decompose().value
                 for ingal in ngal_tomo]
 
-
 ### tomo runs from 1-5, cone run from 1-5, cosmo run from 0-24, 25 is the fiducial model
 cosmos = [ '%02d_%s'%(i, j) for i in range(25) for j in ['a','f']]
 cosmos += ['fid_a', 'fid_f']
@@ -47,7 +47,11 @@ cosmo_fn_gen = lambda cosmo, tomo, cone: cosmo_dir+cosmo+'/kappa_LSST-SRD_tomo%i
 
 ### cov runs from 74 to 199
 cov_fn_gen = lambda tomo, cone: '/global/cscratch1/sd/jialiu/desc-sprint-raytracing/Cov_maps/kappa_LSST-SRD_tomo%i_LOS%i.fits'%(tomo, cone)
-#/global/cscratch1/sd/jialiu/desc-sprint-raytracing/Cov_maps/kappa_LSST-SRD_tomo4_LOS74.fits
+### /global/cscratch1/sd/jialiu/desc-sprint-raytracing/Cov_maps/kappa_LSST-SRD_tomo4_LOS74.fits
+
+### bias map gen
+bias_fn_gen = lambda tomo, cone: '/global/cscratch1/sd/jialiu/desc-sprint-raytracing/biased_maps/kappa_LSST-SRD_tomo%i_%s_LOS_cone1.fits'%(tomo, cone)
+### /global/cscratch1/sd/jialiu/desc-sprint-raytracing/biased_maps/kappa_LSST-SRD_tomo5_pz_zbias0.0015_simgaz0.04_outlier0.15.txt_LOS_cone1.fits
 
 def map_stats (cosmo_tomo_cone):
     '''for fits file fn, generate ps, peaks, minima, pdf, MFs
@@ -63,9 +67,10 @@ def map_stats (cosmo_tomo_cone):
         out_dir = dir_cov
         fn = cov_fn_gen(tomo, cone)
         
-#     elif cosmo=='biased':
-#         iseed=20000        
-        #/global/cscratch1/sd/jialiu/desc-sprint-raytracing/biased_maps/kappa_LSST-SRD_tomo5_pz_zbias0.0015_simgaz0.04_outlier0.15.txt_LOS_cone1.fits
+    elif cosmo=='bias':
+        iseed=20000 
+        fn = bias_fn_gen (tomo, cone)
+        out_dir = dir_bias
         
     else: ## all cosmologies
         if cosmo[-1]=='a':
@@ -77,11 +82,15 @@ def map_stats (cosmo_tomo_cone):
 
     print (fn)
     
-    out_fn_arr = [out_dir+cosmo+'_tomo%i_cone%i_s%i.npy'%(tomo, cone, theta_g) 
+    if not os.path.isfile(fn):
+        print (fn, 'fits file does not exist; skip computation. \n')
+        return 0
+    
+    out_fn_arr = [out_dir+cosmo+'_tomo%i_cone%s_s%i.npy'%(tomo, cone, theta_g) 
                   for theta_g in theta_g_arr]
     
     if np.prod(array([os.path.isfile(out_fn) for out_fn in out_fn_arr])):
-        print (fn, 'files exist; skip computation.\n')
+        print (fn, 'stats files exist; skip computation.\n')
         return 0 ### all files already exist, no need to process
     
     ########## map operations
@@ -91,7 +100,8 @@ def map_stats (cosmo_tomo_cone):
     seed(iseed)
     noise_map = np.random.normal(loc=0.0, scale=sigma_pix_arr[tomo-1], size=(map_pix, map_pix))
     kappa_map = ConvergenceMap(data=imap+noise_map, angle=map_side_deg)
-        
+    noise_map = 0   ## release the memory 
+
     ### compute stats
     ## 3 smoothing
     ## 9 cols: ell, ps, kappa, peak, minima, pdf, v0, v1, v2
@@ -100,7 +110,7 @@ def map_stats (cosmo_tomo_cone):
 
     s=0
     for theta_g in theta_g_arr:        
-        out_fn = out_dir+cosmo+'_tomo%i_cone%i_s%i.npy'%(tomo, cone, theta_g)
+        out_fn = out_dir+cosmo+'_tomo%i_cone%s_s%i.npy'%(tomo, cone, theta_g)
         imap = kappa_map.smooth(theta_g*u.arcmin)
         out=zeros(shape=(11, Nbin)) 
         kappa_bins = kappa_bin_edges[s][tomo-1] 
@@ -128,18 +138,25 @@ cosmo_tomo_cone_arr = [[cosmo, tomo, cone]
                        for cosmo in cosmos 
                        for tomo in range(1,6)
                        for cone in range(1,6)]
-
-cov_tomo_con_arr = [['cov', tomo, cone] 
-                       for tomo in range(1,6)
-                       for cone in range(74,200)]
 ## test on one map
 # map_stats (cosmo_tomo_cone_arr[1])
+
+cov_tomo_cone_arr = [['cov', tomo, cone] 
+                       for tomo in range(1,6)
+                       for cone in range(74,200)]
+### LOS 140 and 135 are missing, 198 tomo 3, 4 are missing
+
+pz_lists = genfromtxt('pz_list.txt', dtype='str')
+bias_tomo_cone_arr = [['bias', tomo, cone] 
+                       for tomo in range(1,6)
+                       for cone in pz_lists]
 
 pool=MPIPool()
 if not pool.is_master():
     pool.wait()
     sys.exit(0)
 
-out=pool.map(map_stats, cosmo_tomo_cone_arr+cov_tomo_con_arr)
+out=pool.map(map_stats, bias_tomo_cone_arr+cov_tomo_cone_arr+cosmo_tomo_cone_arr)
 pool.close()
 print ('DONE-DONE-DONE')
+sys.exit(0)
