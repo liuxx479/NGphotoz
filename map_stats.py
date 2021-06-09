@@ -50,7 +50,7 @@ cov_fn_gen = lambda tomo, cone: '/global/cscratch1/sd/jialiu/desc-sprint-raytrac
 ### /global/cscratch1/sd/jialiu/desc-sprint-raytracing/Cov_maps/kappa_LSST-SRD_tomo4_LOS74.fits
 
 ### bias map gen
-bias_fn_gen = lambda tomo, cone: '/global/cscratch1/sd/jialiu/desc-sprint-raytracing/biased_maps/kappa_LSST-SRD_tomo%i_%s_LOS_cone1.fits'%(tomo, cone)
+bias_fn_gen = lambda tomo, ipz, cone: '/global/cscratch1/sd/jialiu/desc-sprint-raytracing/biased_maps/kappa_LSST-SRD_tomo%i_%s_LOS_cone%i.fits'%(tomo, ipz, cone)
 ### /global/cscratch1/sd/jialiu/desc-sprint-raytracing/biased_maps/kappa_LSST-SRD_tomo5_pz_zbias0.0015_simgaz0.04_outlier0.15.txt_LOS_cone1.fits
 
 def map_stats (cosmo_tomo_cone):
@@ -58,8 +58,13 @@ def map_stats (cosmo_tomo_cone):
     fn: input file name, including full path
     tomo=1, 2,..5: int, for tomographic bins
     cone=1, 2,..5: int, for light cones'''
-    cosmo, tomo, cone = cosmo_tomo_cone
-    
+
+    if len(cosmo_tomo_cone) == 3:
+        cosmo, tomo, cone = cosmo_tomo_cone
+        ipz=''
+    else:
+        cosmo, tomo, cone, ipz = cosmo_tomo_cone
+
     ### generate random see, such that it is the same for all cosmology
     ### but different for tomo and cone
     if cosmo=='cov':
@@ -68,8 +73,8 @@ def map_stats (cosmo_tomo_cone):
         fn = cov_fn_gen(tomo, cone)
         
     elif cosmo=='bias':
-        iseed=20000 
-        fn = bias_fn_gen (tomo, cone)
+        iseed=int(20000+cone*10+tomo)#20000 
+        fn = bias_fn_gen (tomo, ipz, cone)
         out_dir = dir_bias
         
     else: ## all cosmologies
@@ -83,16 +88,18 @@ def map_stats (cosmo_tomo_cone):
     print (fn)
     
     if not os.path.isfile(fn):
-        print (fn, 'fits file does not exist; skip computation. \n')
+        print (fn, 'file does not exist \n')
         return 0
     
     out_fn_arr = [out_dir+cosmo+'_tomo%i_cone%s_s%i.npy'%(tomo, cone, theta_g) 
                   for theta_g in theta_g_arr]
     
-    if np.prod(array([os.path.isfile(out_fn) for out_fn in out_fn_arr])):
-        print (fn, 'stats files exist; skip computation.\n')
+    if np.prod(array([os.path.isfile(out_fn) for out_fn in out_fn_arr])): 
+        ### check if the product of boolean elements in the array = 1
+#         print (fn, 'stats files exist; skip computation.\n')
         return 0 ### all files already exist, no need to process
     
+    ########## above specifies the file name, sead, output directory, below computes the stats
     ########## map operations
     imap = fits.open(fn)[0].data ## open the file
     
@@ -110,7 +117,7 @@ def map_stats (cosmo_tomo_cone):
 
     s=0
     for theta_g in theta_g_arr:        
-        out_fn = out_dir+cosmo+'_tomo%i_cone%s_s%i.npy'%(tomo, cone, theta_g)
+        out_fn = out_dir+cosmo+'%s_tomo%i_cone%s_s%i.npy'%(ipz, tomo, cone, theta_g)
         imap = kappa_map.smooth(theta_g*u.arcmin)
         out=zeros(shape=(11, Nbin)) 
         kappa_bins = kappa_bin_edges[s][tomo-1] 
@@ -143,20 +150,24 @@ cosmo_tomo_cone_arr = [[cosmo, tomo, cone]
 
 cov_tomo_cone_arr = [['cov', tomo, cone] 
                        for tomo in range(1,6)
-                       for cone in range(74,200)]
+                       for cone in range(74,1100)]#200
 ### LOS 140 and 135 are missing, 198 tomo 3, 4 are missing
+## The LOS number runs from 74 to 1100, with some missing LOS. You will have 954 in total. 
 
 pz_lists = genfromtxt('pz_list.txt', dtype='str')
-bias_tomo_cone_arr = [['bias', tomo, cone] 
+bias_tomo_cone_arr = [['bias', tomo, cone, ipz] 
                        for tomo in range(1,6)
-                       for cone in pz_lists]
+                       for cone in range(1,11)
+                       for ipz in pz_lists]
 
 pool=MPIPool()
 if not pool.is_master():
     pool.wait()
     sys.exit(0)
 
-out=pool.map(map_stats, bias_tomo_cone_arr+cov_tomo_cone_arr+cosmo_tomo_cone_arr)
+out=pool.map(map_stats, bias_tomo_cone_arr)
+# out=pool.map(map_stats, cov_tomo_cone_arr)
+# bias_tomo_cone_arr+cov_tomo_cone_arr+cosmo_tomo_cone_arr
 pool.close()
 print ('DONE-DONE-DONE')
 sys.exit(0)
