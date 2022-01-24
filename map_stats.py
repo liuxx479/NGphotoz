@@ -34,7 +34,8 @@ ngal = neff
 
 ### derived parameters
 N_theta_g = len(theta_g_arr)
-ngal_tomo = loadtxt(root+'ngal_tomo.txt') * ngal ## use neff instead of ngal
+####### the below line may have bug: to check (1/24/2022), ended up removing the *ngal part, but unsure why it was there before..
+ngal_tomo = loadtxt(root+'ngal_tomo.txt') #* ngal ## use neff instead of ngal
 sigma_kappa_arr = loadtxt(root+'sigma_kappa.txt')
 kappa_bin_edges = kron(sigma_kappa_arr,sigma_bin_edges).reshape(3,5,-1)
 sigma_pix_arr =[ (sigma_kappa / (pixel_angular_side * sqrt(ingal / u.arcmin**2))).decompose().value
