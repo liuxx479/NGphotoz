@@ -162,26 +162,31 @@ bias_tomo_cone_arr = [['bias', tomo, cone, ipz]
                        for cone in range(1,11)
                        for ipz in pz_lists]
 
-# pool=MPIPool()
-# if not pool.is_master():
-#     pool.wait()
-#     sys.exit(0)
+########################################
+################## mass production block
+########################################
 
+pool=MPIPool()
+if not pool.is_master():
+    pool.wait()
+    sys.exit(0)
 
-
+process_arr = bias_tomo_cone_arr+cov_tomo_cone_arr+cosmo_tomo_cone_arr
+out=pool.map(map_stats, process_arr)
 # out=pool.map(map_stats, bias_tomo_cone_arr)
 # out=pool.map(map_stats, cov_tomo_cone_arr)
-# bias_tomo_cone_arr+cov_tomo_cone_arr+cosmo_tomo_cone_arr
-# pool.close()
+pool.close()
 
-
+########################################
 ########## redo the problematic one
-cosmo_tomo_cone_arr_fix = [[cosmos[0], tomo, 2] 
-                       for tomo in range(1,6)]
-# out=map(map_stats, cosmo_tomo_cone_arr)
-for icosmo in cosmo_tomo_cone_arr_fix:
-    print (icosmo)
-    map_stats(icosmo)
+########################################
+
+# cosmo_tomo_cone_arr_fix = [[cosmos[0], tomo, 2] 
+#                        for tomo in range(1,6)]
+# # out=map(map_stats, cosmo_tomo_cone_arr)
+# for icosmo in cosmo_tomo_cone_arr_fix:
+#     print (icosmo)
+#     map_stats(icosmo)
     
     
 print ('DONE-DONE-DONE')
