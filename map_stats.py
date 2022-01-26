@@ -7,14 +7,14 @@ from astropy.io import fits
 from astropy import units as u
 import os
 sys.modules["mpi4py"] = None
-# from emcee.utils import MPIPool 
 from lenstools import ConvergenceMap
 
 root = '/global/u1/j/jialiu/NGphotoz/'
 dir_storage = root+'NGphotoz_scratch/'
-dir_cosmos = dir_storage+'Cosmo_maps/'
-dir_cov = dir_storage+'Cov_maps/'
-dir_bias = dir_storage+'Bias_maps/'
+dir_SLICS = '/global/cfs/cdirs/lsst/shared/external/SLICS/desc-sprint-raytracing/'
+dir_cosmos = dir_SLICS+'Cosmo_maps/'
+dir_cov = dir_SLICS+'Cov_maps/'
+dir_bias = dir_SLICS+'Bias_maps/'
 
 ## constants
 map_side_deg = 10*u.degree
@@ -165,6 +165,7 @@ bias_tomo_cone_arr = [['bias', tomo, cone, ipz]
 ########################################
 ################## mass production block
 ########################################
+from emcee.utils import MPIPool 
 
 pool=MPIPool()
 if not pool.is_master():
