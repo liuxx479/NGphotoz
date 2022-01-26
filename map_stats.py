@@ -6,7 +6,7 @@ from scipy.stats import uniform
 from astropy.io import fits
 from astropy import units as u
 import os
-sys.modules["mpi4py"] = None
+from emcee.utils import MPIPool # sys.modules["mpi4py"] = None
 from lenstools import ConvergenceMap
 
 root = '/global/u1/j/jialiu/NGphotoz/'
@@ -165,7 +165,6 @@ bias_tomo_cone_arr = [['bias', tomo, cone, ipz]
 ########################################
 ################## mass production block
 ########################################
-from emcee.utils import MPIPool 
 
 pool=MPIPool()
 if not pool.is_master():
