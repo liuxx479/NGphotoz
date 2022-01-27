@@ -125,7 +125,7 @@ def map_stats (cosmo_tomo_cone):
     ############# check if stats files exist; if yes, skip computation
     if np.prod(array([os.path.isfile(out_fn) for out_fn in out_fn_arr])): 
         ### check if the product of boolean elements in the array = 1 (meaning for all smoothing scales)
-        ### print (fn, 'stats files exist; skip computation.\n')
+        print (fn, 'stats files exist; skip computation.\n')
         return 0 ### all files already exist, no need to process
     
     ##################################
